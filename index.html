@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Institute Support Task Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--p:#15558a;--p2:#0e3d63;--bg:#f4f7fa;--card:#fff;--line:#dfe6ed;--txt:#243342;--muted:#687786;--red:#dc3545;--orange:#f39c12;--green:#198754;--blue:#0d6efd}
+*{box-sizing:border-box}body{margin:0;font:14px Arial,sans-serif;color:var(--txt);background:var(--bg)}
+header{height:62px;background:var(--p2);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:20}header h1{font-size:19px;margin:0}
+.app{display:flex}.side{position:fixed;top:62px;bottom:0;width:225px;background:#123b5c;padding:12px 9px;overflow:auto}.side button{width:100%;border:0;background:transparent;color:#dceaf5;padding:11px;text-align:left;border-radius:6px;cursor:pointer;margin:2px 0}.side button:hover,.side button.active{background:#25618d;color:#fff}
+main{margin-left:225px;padding:20px;width:calc(100% - 225px)}.page{display:none}.page.active{display:block}.title{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.title h2{margin:0}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:15px}.card{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:15px}.metric{font-size:27px;font-weight:bold;margin-top:7px}.muted{color:var(--muted);font-size:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:15px}.toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}.toolbar input,.toolbar select{height:38px;border:1px solid var(--line);border-radius:6px;padding:7px 9px;background:#fff}.toolbar input{min-width:200px}.global-filters{display:flex;flex-wrap:wrap;gap:8px;background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px;margin-bottom:12px}.global-filters select,.global-filters input{height:36px;border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:#fff}.filter-label{font-size:11px;font-weight:bold;color:var(--muted);display:flex;align-items:center}
+.btn{border:0;border-radius:6px;padding:9px 12px;cursor:pointer;background:#e9eef2;color:var(--txt)}.primary{background:var(--p);color:#fff}.success{background:var(--green);color:#fff}.danger{background:var(--red);color:#fff}.info{background:var(--blue);color:#fff}.warning{background:var(--orange);color:#fff}.sm{padding:6px 8px;font-size:12px}
+.tablebox{background:#fff;border:1px solid var(--line);border-radius:9px;overflow:auto}.table{width:100%;border-collapse:collapse;font-size:13px}.table th,.table td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}.table th{background:#f7f9fb;white-space:nowrap}.table tr:hover td{background:#fbfdff}
+.badge{display:inline-block;padding:4px 7px;border-radius:12px;font-size:11px;font-weight:bold;white-space:nowrap}.pending{background:#fde3e6;color:#a51d2d}.progress{background:#dceaff;color:#12549e}.waiting{background:#fff0d4;color:#9a5c00}.complete{background:#def3e5;color:#126c3a}.hold{background:#e9ecef;color:#495057}.esc{background:#eadfff;color:#6335a5}
+.modal{display:none;position:fixed;inset:0;background:#0008;z-index:50;align-items:center;justify-content:center;padding:15px}.modal.show{display:flex}.modalbox{background:#fff;width:min(760px,100%);max-height:92vh;overflow:auto;border-radius:9px}.mh{padding:14px 17px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}.mh h3{margin:0}.mb{padding:17px}.mf{padding:12px 17px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}.form{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{display:flex;flex-direction:column;gap:5px}.field.full{grid-column:1/-1}.field label{font-size:12px;font-weight:bold}.field input,.field select,.field textarea{border:1px solid var(--line);border-radius:6px;padding:9px;font:inherit}.field textarea{min-height:80px}.timeline{border-left:3px solid #d8e4ee;padding-left:17px}.event{margin-bottom:18px;position:relative}.event:before{content:"";position:absolute;left:-24px;top:4px;width:9px;height:9px;border-radius:50%;background:var(--p)}.event p{margin:5px 0;font-size:13px}.event .muted{font-size:11px}.empty{text-align:center;padding:28px;color:var(--muted)}.toast{display:none;position:fixed;right:18px;bottom:18px;background:#222;color:#fff;padding:11px 15px;border-radius:7px;z-index:100}.toast.show{display:block}
+@media(max-width:1000px){.cards{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}@media(max-width:700px){.side{width:62px}.side button{font-size:0;text-align:center}.side button:first-letter{font-size:18px}main{margin-left:62px;width:calc(100% - 62px);padding:12px}.cards{grid-template-columns:1fr 1fr}.form{grid-template-columns:1fr}.field.full{grid-column:auto}header h1{font-size:14px}}
+</style>
+</head>
+<body>
+<header>
+<h1>Institute Support Task Tracker</h1>
+<div style="display:flex;align-items:center;gap:10px">
+  <div id="firebaseStatus" title="Checking Firebase connection..." style="display:flex;align-items:center;gap:6px;background:#ffffff18;padding:7px 10px;border-radius:18px;font-size:12px">
+    <span id="firebaseDot" style="width:9px;height:9px;border-radius:50%;background:#f0ad4e;display:inline-block"></span>
+    <span id="firebaseText">Connecting...</span>
+  </div>
+  <button class="btn primary" onclick="requestExcelImport()">📥 Import Excel</button>
+  <input id="excel" type="file" accept=".xlsx,.xls" hidden onchange="importExcel(event)">
+</div>
+</header>
+
+<div class="app">
+<nav class="side">
+<button class="active" onclick="page('dashboard',this)">📊 Dashboard</button>
+<button onclick="page('institutes',this)">🏫 Institutes</button>
+<button onclick="page('tasks',this)">📋 All Tasks</button>
+<button onclick="page('pending',this)">⏳ Pending Tasks</button>
+<button onclick="page('today',this)">📅 Today's Follow-ups</button>
+<button onclick="page('overdue',this)">⚠️ Overdue</button>
+<button onclick="page('updates',this)">📝 Daily Updates</button>
+<button onclick="page('completed',this)">✅ Completed</button>
+<button onclick="page('staff',this)">👥 Staff Workload</button>
+<button onclick="page('import',this)">📥 Excel Import</button>
+<button onclick="page('reports',this)">📤 Reports</button>
+</nav>
+
+<main>
+<section id="dashboard" class="page active">
+<div class="title"><h2>Dashboard</h2><span class="muted" id="todayText"></span></div>
+<div class="global-filters" style="margin-bottom:15px">
+<span class="filter-label">Task Filter:</span>
+<input id="gfSearch" placeholder="Institute / Task / Code" oninput="applyGlobalFilter()">
+<select id="gfTask" onchange="applyGlobalFilter()"><option value="">All Tasks</option></select>
+<select id="gfCategory" onchange="applyGlobalFilter()"><option value="">All Categories</option></select>
+<select id="gfEvent" onchange="applyGlobalFilter()"><option value="">All Month / Events</option></select>
+<select id="gfStaff" onchange="applyGlobalFilter()"><option value="">All Staff</option></select>
+<select id="gfStatus" onchange="applyGlobalFilter()"><option value="">All Status</option><option>Pending</option><option>In Progress</option><option>Waiting for Institute</option><option>Waiting for Internal Action</option><option>Escalated</option><option>On Hold</option><option>Completed</option></select>
+<select id="gfPriority" onchange="applyGlobalFilter()"><option value="">All Priority</option><option>High</option><option>Medium</option><option>Low</option></select>
+<input id="gfDue" type="date" title="Due Date" onchange="applyGlobalFilter()">
+<input id="gfNext" type="date" title="Next Follow-up" onchange="applyGlobalFilter()">
+<button class="btn sm" onclick="clearGlobalFilter()">Clear Filters</button>
+</div>
+<div id="dashboardFilterSummary" class="muted" style="margin:-5px 0 12px"></div>
+<div class="cards">
+<div class="card"><div class="muted">Total Institutes</div><div class="metric" id="mInst">0</div></div>
+<div class="card"><div class="muted">Active Tasks</div><div class="metric" id="mActive">0</div></div>
+<div class="card"><div class="muted">Due Today</div><div class="metric" id="mToday">0</div></div>
+<div class="card"><div class="muted">Overdue</div><div class="metric" id="mOver">0</div></div>
+<div class="card"><div class="muted">Waiting for Institute</div><div class="metric" id="mWait">0</div></div>
+<div class="card"><div class="muted">In Progress</div><div class="metric" id="mProg">0</div></div>
+<div class="card"><div class="muted">Completed Today</div><div class="metric" id="mDone">0</div></div>
+<div class="card"><div class="muted">High Priority</div><div class="metric" id="mHigh">0</div></div>
+</div>
+<div class="grid2">
+<div class="card"><h3>Staff Workload</h3><div id="staffDash"></div></div>
+<div class="card"><h3>Task Category Summary</h3><div id="catDash"></div></div>
+</div>
+</section>
+
+<section id="institutes" class="page">
+<div class="global-filters">
+<span class="filter-label">Task Filter:</span>
+<input id="gfSearch" placeholder="Institute / Task / Code" oninput="applyGlobalFilter()">
+<select id="gfTask" onchange="applyGlobalFilter()"><option value="">All Tasks</option></select>
+<select id="gfCategory" onchange="applyGlobalFilter()"><option value="">All Categories</option></select>
+<select id="gfEvent" onchange="applyGlobalFilter()"><option value="">All Month / Events</option></select>
+<select id="gfStaff" onchange="applyGlobalFilter()"><option value="">All Staff</option></select>
+<select id="gfStatus" onchange="applyGlobalFilter()"><option value="">All Status</option><option>Pending</option><option>In Progress</option><option>Waiting for Institute</option><option>Waiting for Internal Action</option><option>Escalated</option><option>On Hold</option><option>Completed</option></select>
+<select id="gfPriority" onchange="applyGlobalFilter()"><option value="">All Priority</option><option>High</option><option>Medium</option><option>Low</option></select>
+<input id="gfDue" type="date" title="Due Date" onchange="applyGlobalFilter()">
+<input id="gfNext" type="date" title="Next Follow-up" onchange="applyGlobalFilter()">
+<button class="btn sm" onclick="clearGlobalFilter()">Clear Filters</button>
+</div>
+<div class="title"><h2>Institute Master</h2><button class="btn primary" onclick="openInstitute()">+ Add Institute</button></div>
+<div class="toolbar"><input id="isearch" placeholder="Search institute / code..." oninput="renderInstitutes()"><select id="istaff" onchange="renderInstitutes()"></select></div>
+<div class="tablebox"><table class="table"><thead><tr><th>Institute</th><th>Code</th><th>Staff</th><th>District/Location</th><th>Contact</th><th>Active Tasks</th><th>Actions</th></tr></thead><tbody id="instBody"></tbody></table></div>
+</section>
+
+<section id="tasks" class="page">
+<div class="global-filters">
+<span class="filter-label">Task Filter:</span>
+<input id="gfSearch" placeholder="Institute / Task / Code" oninput="applyGlobalFilter()">
+<select id="gfTask" onchange="applyGlobalFilter()"><option value="">All Tasks</option></select>
+<select id="gfCategory" onchange="applyGlobalFilter()"><option value="">All Categories</option></select>
+<select id="gfEvent" onchange="applyGlobalFilter()"><option value="">All Month / Events</option></select>
+<select id="gfStaff" onchange="applyGlobalFilter()"><option value="">All Staff</option></select>
+<select id="gfStatus" onchange="applyGlobalFilter()"><option value="">All Status</option><option>Pending</option><option>In Progress</option><option>Waiting for Institute</option><option>Waiting for Internal Action</option><option>Escalated</option><option>On Hold</option><option>Completed</option></select>
+<select id="gfPriority" onchange="applyGlobalFilter()"><option value="">All Priority</option><option>High</option><option>Medium</option><option>Low</option></select>
+<input id="gfDue" type="date" title="Due Date" onchange="applyGlobalFilter()">
+<input id="gfNext" type="date" title="Next Follow-up" onchange="applyGlobalFilter()">
+<button class="btn sm" onclick="clearGlobalFilter()">Clear Filters</button>
+</div>
+<div class="title"><h2>All Tasks</h2><button class="btn primary" onclick="openTask()">+ Add Task</button></div>
+<div class="toolbar"><input id="tsearch" placeholder="Search institute / task..." oninput="renderTasks()"><select id="tstaff" onchange="renderTasks()"></select><select id="tcat" onchange="renderTasks()"><option value="">All Categories</option></select><select id="tstatus" onchange="renderTasks()"><option value="">All Status</option><option>Pending</option><option>In Progress</option><option>Waiting for Institute</option><option>Waiting for Internal Action</option><option>Escalated</option><option>On Hold</option><option>Completed</option></select></div>
+<div class="tablebox"><table class="table"><thead><tr><th>Institute</th><th>Staff</th><th>Task</th><th>Category</th><th>Period/Event</th><th>Due Date</th><th>Status</th><th>Next Follow-up</th><th>Actions</th></tr></thead><tbody id="taskBody"></tbody></table></div>
+</section>
+
+<section id="pending" class="page">
+<div class="global-filters">
+<span class="filter-label">Task Filter:</span>
+<input id="gfSearch" placeholder="Institute / Task / Code" oninput="applyGlobalFilter()">
+<select id="gfTask" onchange="applyGlobalFilter()"><option value="">All Tasks</option></select>
+<select id="gfCategory" onchange="applyGlobalFilter()"><option value="">All Categories</option></select>
+<select id="gfEvent" onchange="applyGlobalFilter()"><option value="">All Month / Events</option></select>
+<select id="gfStaff" onchange="applyGlobalFilter()"><option value="">All Staff</option></select>
+<select id="gfStatus" onchange="applyGlobalFilter()"><option value="">All Status</option><option>Pending</option><option>In Progress</option><option>Waiting for Institute</option><option>Waiting for Internal Action</option><option>Escalated</option><option>On Hold</option><option>Completed</option></select>
+<select id="gfPriority" onchange="applyGlobalFilter()"><option value="">All Priority</option><option>High</option><option>Medium</option><option>Low</option></select>
+<input id="gfDue" type="date" title="Due Date" onchange="applyGlobalFilter()">
+<input id="gfNext" type="date" title="Next Follow-up" onchange="applyGlobalFilter()">
+<button class="btn sm" onclick="clearGlobalFilter()">Clear Filters</button>
+</div>
+<div class="title"><h2>Pending Tasks</h2><button class="btn primary" onclick="openTask()">+ Add Pending Task</button></div>
+<div class="toolbar"><input id="psearch" placeholder="Search pending task..." oninput="renderPending()"><select id="pstaff" onchange="renderPending()"></select><select id="pcat" onchange="renderPending()"><option value="">All Categories</option></select><select id="ppriority" onchange="renderPending()"><option value="">All Priority</option><option>High</option><option>Medium</option><option>Low</option></select></div>
+<div class="tablebox"><table class="table"><thead><tr><th>Institute</th><th>Task</th><th>Category</th><th>Staff</th><th>Priority</th><th>Due</th><th>Next Follow-up</th><th>Status</th><th>Age</th><th>Actions</th></tr></thead><tbody id="pendingBody"></tbody></table></div>
+</section>
+
+<section id="today" class="page">
+<div class="global-filters">
+<span class="filter-label">Task Filter:</span>
+<input id="gfSearch" placeholder="Institute / Task / Code" oninput="applyGlobalFilter()">
+<select id="gfTask" onchange="applyGlobalFilter()"><option value="">All Tasks</option></select>
+<select id="gfCategory" onchange="applyGlobalFilter()"><option value="">All Categories</option></select>
+<select id="gfEvent" onchange="applyGlobalFilter()"><option value="">All Month / Events</option></select>
+<select id="gfStaff" onchange="applyGlobalFilter()"><option value="">All Staff</option></select>
+<select id="gfStatus" onchange="applyGlobalFilter()"><option value="">All Status</option><option>Pending</option><option>In Progress</option><option>Waiting for Institute</option><option>Waiting for Internal Action</option><option>Escalated</option><option>On Hold</option><option>Completed</option></select>
+<select id="gfPriority" onchange="applyGlobalFilter()"><option value="">All Priority</option><option>High</option><option>Medium</option><option>Low</option></select>
+<input id="gfDue" type="date" title="Due Date" onchange="applyGlobalFilter()">
+<input id="gfNext" type="date" title="Next Follow-up" onchange="applyGlobalFilter()">
+<button class="btn sm" onclick="clearGlobalFilter()">Clear Filters</button>
+</div>
+<div class="title"><h2>Today's Follow-ups</h2></div>
+<div class="tablebox"><table class="table"><thead><tr><th>Institute</th><th>Task</th><th>Staff</th><th>Priority</th><th>Latest Update</th><th>Next Action</th><th>Status</th><th>Actions</th></tr></thead><tbody id="todayBody"></tbody></table></div>
+</section>
+
+<section id="overdue" class="page">
+<div class="global-filters">
+<span class="filter-label">Task Filter:</span>
+<input id="gfSearch" placeholder="Institute / Task / Code" oninput="applyGlobalFilter()">
+<select id="gfTask" onchange="applyGlobalFilter()"><option value="">All Tasks</option></select>
+<select id="gfCategory" onchange="applyGlobalFilter()"><option value="">All Categories</option></select>
+<select id="gfEvent" onchange="applyGlobalFilter()"><option value="">All Month / Events</option></select>
+<select id="gfStaff" onchange="applyGlobalFilter()"><option value="">All Staff</option></select>
+<select id="gfStatus" onchange="applyGlobalFilter()"><option value="">All Status</option><option>Pending</option><option>In Progress</option><option>Waiting for Institute</option><option>Waiting for Internal Action</option><option>Escalated</option><option>On Hold</option><option>Completed</option></select>
+<select id="gfPriority" onchange="applyGlobalFilter()"><option value="">All Priority</option><option>High</option><option>Medium</option><option>Low</option></select>
+<input id="gfDue" type="date" title="Due Date" onchange="applyGlobalFilter()">
+<input id="gfNext" type="date" title="Next Follow-up" onchange="applyGlobalFilter()">
+<button class="btn sm" onclick="clearGlobalFilter()">Clear Filters</button>
+</div>
+<div class="title"><h2>Overdue Tasks</h2></div>
+<div class="tablebox"><table class="table"><thead><tr><th>Institute</th><th>Task</th><th>Staff</th><th>Due Date</th><th>Overdue</th><th>Priority</th><th>Status</th><th>Actions</th></tr></thead><tbody id="overBody"></tbody></table></div>
+</section>
+
+<section id="updates" class="page">
+<div class="global-filters">
+<span class="filter-label">Task Filter:</span>
+<input id="gfSearch" placeholder="Institute / Task / Code" oninput="applyGlobalFilter()">
+<select id="gfTask" onchange="applyGlobalFilter()"><option value="">All Tasks</option></select>
+<select id="gfCategory" onchange="applyGlobalFilter()"><option value="">All Categories</option></select>
+<select id="gfEvent" onchange="applyGlobalFilter()"><option value="">All Month / Events</option></select>
+<select id="gfStaff" onchange="applyGlobalFilter()"><option value="">All Staff</option></select>
+<select id="gfStatus" onchange="applyGlobalFilter()"><option value="">All Status</option><option>Pending</option><option>In Progress</option><option>Waiting for Institute</option><option>Waiting for Internal Action</option><option>Escalated</option><option>On Hold</option><option>Completed</option></select>
+<select id="gfPriority" onchange="applyGlobalFilter()"><option value="">All Priority</option><option>High</option><option>Medium</option><option>Low</option></select>
+<input id="gfDue" type="date" title="Due Date" onchange="applyGlobalFilter()">
+<input id="gfNext" type="date" title="Next Follow-up" onchange="applyGlobalFilter()">
+<button class="btn sm" onclick="clearGlobalFilter()">Clear Filters</button>
+</div>
+<div class="title"><h2>Daily Follow-up Updates</h2><button class="btn primary" onclick="openUpdate()">+ Add Update</button></div>
+<div class="toolbar"><input id="usearch" placeholder="Search institute / task / update..." oninput="renderUpdates()"><select id="ustaff" onchange="renderUpdates()"></select></div>
+<div class="tablebox"><table class="table"><thead><tr><th>Date</th><th>Institute</th><th>Task</th><th>Staff</th><th>Method</th><th>Action Taken</th><th>Institute Response</th><th>Status</th><th>Next Follow-up</th></tr></thead><tbody id="updateBody"></tbody></table></div>
+</section>
+
+<section id="completed" class="page">
+<div class="global-filters">
+<span class="filter-label">Task Filter:</span>
+<input id="gfSearch" placeholder="Institute / Task / Code" oninput="applyGlobalFilter()">
+<select id="gfTask" onchange="applyGlobalFilter()"><option value="">All Tasks</option></select>
+<select id="gfCategory" onchange="applyGlobalFilter()"><option value="">All Categories</option></select>
+<select id="gfEvent" onchange="applyGlobalFilter()"><option value="">All Month / Events</option></select>
+<select id="gfStaff" onchange="applyGlobalFilter()"><option value="">All Staff</option></select>
+<select id="gfStatus" onchange="applyGlobalFilter()"><option value="">All Status</option><option>Pending</option><option>In Progress</option><option>Waiting for Institute</option><option>Waiting for Internal Action</option><option>Escalated</option><option>On Hold</option><option>Completed</option></select>
+<select id="gfPriority" onchange="applyGlobalFilter()"><option value="">All Priority</option><option>High</option><option>Medium</option><option>Low</option></select>
+<input id="gfDue" type="date" title="Due Date" onchange="applyGlobalFilter()">
+<input id="gfNext" type="date" title="Next Follow-up" onchange="applyGlobalFilter()">
+<button class="btn sm" onclick="clearGlobalFilter()">Clear Filters</button>
+</div>
+<div class="title"><h2>Completed Tasks</h2></div>
+<div class="tablebox"><table class="table"><thead><tr><th>Institute</th><th>Task</th><th>Category</th><th>Staff</th><th>Completed Date</th><th>Latest Update</th><th>Actions</th></tr></thead><tbody id="doneBody"></tbody></table></div>
+</section>
+
+<section id="staff" class="page">
+<div class="global-filters">
+<span class="filter-label">Task Filter:</span>
+<input id="gfSearch" placeholder="Institute / Task / Code" oninput="applyGlobalFilter()">
+<select id="gfTask" onchange="applyGlobalFilter()"><option value="">All Tasks</option></select>
+<select id="gfCategory" onchange="applyGlobalFilter()"><option value="">All Categories</option></select>
+<select id="gfEvent" onchange="applyGlobalFilter()"><option value="">All Month / Events</option></select>
+<select id="gfStaff" onchange="applyGlobalFilter()"><option value="">All Staff</option></select>
+<select id="gfStatus" onchange="applyGlobalFilter()"><option value="">All Status</option><option>Pending</option><option>In Progress</option><option>Waiting for Institute</option><option>Waiting for Internal Action</option><option>Escalated</option><option>On Hold</option><option>Completed</option></select>
+<select id="gfPriority" onchange="applyGlobalFilter()"><option value="">All Priority</option><option>High</option><option>Medium</option><option>Low</option></select>
+<input id="gfDue" type="date" title="Due Date" onchange="applyGlobalFilter()">
+<input id="gfNext" type="date" title="Next Follow-up" onchange="applyGlobalFilter()">
+<button class="btn sm" onclick="clearGlobalFilter()">Clear Filters</button>
+</div>
+<div class="title"><h2>Staff Workload</h2><button class="btn primary" onclick="addStaff()">+ Add Staff</button></div>
+<div class="tablebox"><table class="table"><thead><tr><th>Staff</th><th>Institutes</th><th>Active Tasks</th><th>Due Today</th><th>Overdue</th><th>Completed</th><th>Actions</th></tr></thead><tbody id="staffBody"></tbody></table></div>
+</section>
+
+<section id="import" class="page">
+<div class="title"><h2>Excel Import</h2></div>
+<div class="card">
+<h3>Bulk Task Upload</h3>
+<p>Upload an Excel sheet containing multiple institutes and multiple tasks. Existing tasks with the same Task ID will be updated; otherwise new tasks are created.</p>
+<button class="btn primary" onclick="requestExcelImport()">Choose Excel File</button>
+<button class="btn warning" id="undoUploadBtn" onclick="undoLastUpload()" style="display:none">↩ Undo Last Upload</button>
+<span id="uploadSummary" class="muted"></span>
+<input id="excel2" type="file" accept=".xlsx,.xls" hidden onchange="importExcel(event)">
+<h4>Recommended Excel columns</h4>
+<div class="muted">Institute Code, Institute Name, Staff Name, Task, Task Category, Month/Event, Due Date, Priority, Status, Next Follow-up, Remarks</div>
+<br><button class="btn" onclick="downloadTemplate()">Download Excel Template</button>
+</div>
+<div class="card" style="margin-top:15px"><h3>Example</h3>
+<table class="table"><tr><th>Institute Code</th><th>Institute Name</th><th>Staff Name</th><th>Task</th><th>Category</th><th>Month/Event</th><th>Due Date</th><th>Priority</th></tr>
+<tr><td>ALC001</td><td>ABC Computer Institute</td><td>Staff 1</td><td>CCTV Recording Upload</td><td>Exam</td><td>August 2026 Exam</td><td>20-08-2026</td><td>High</td></tr>
+<tr><td>ALC001</td><td>ABC Computer Institute</td><td>Staff 1</td><td>Bank Details Upload</td><td>Accounts</td><td>August 2026</td><td>25-08-2026</td><td>Medium</td></tr>
+</table></div>
+</section>
+
+<section id="reports" class="page">
+<div class="title"><h2>Reports & Export</h2></div>
+<div class="cards">
+<div class="card"><h3>Pending Tasks</h3><button class="btn success" onclick="exportPending()">Export Excel</button></div>
+<div class="card"><h3>Daily Updates</h3><button class="btn success" onclick="exportUpdates()">Export Excel</button></div>
+<div class="card"><h3>Institute Master</h3><button class="btn success" onclick="exportInstitutes()">Export Excel</button></div>
+<div class="card"><h3>Complete Report</h3><button class="btn success" onclick="exportAll()">Export Excel</button></div>
+</div>
+</section>
+</main></div>
+
+
+<div id="importPasswordModal" class="modal" onclick="if(event.target===this)closeImportPassword()">
+  <div class="modalbox" style="max-width:420px">
+    <div class="mh"><h3>🔐 Excel Import Password</h3><button class="btn" onclick="closeImportPassword()">✕</button></div>
+    <div class="mb">
+      <p class="muted">Enter the password to import an Excel file.</p>
+      <div class="field">
+        <label>Password</label>
+        <input id="excelImportPassword" type="password" placeholder="Enter password" onkeydown="if(event.key==='Enter')verifyImportPassword()">
+      </div>
+      <div id="importPasswordError" style="display:none;color:#dc3545;font-size:12px;margin-top:8px">Incorrect password.</div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="closeImportPassword()">Cancel</button>
+      <button class="btn primary" onclick="verifyImportPassword()">Continue</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal" class="modal" onclick="if(event.target===this)closeModal()"><div class="modalbox"><div class="mh"><h3 id="mtitle"></h3><button class="btn" onclick="closeModal()">✕</button></div><div class="mb" id="mbody"></div><div class="mf"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="msave">Save</button></div></div></div>
+<div id="toast" class="toast"></div>
+
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, get, child } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAev6--tz417hcW6rBQULTAmI_a213OVYA",
+  authDomain: "institute-support-tracker.firebaseapp.com",
+  databaseURL: "https://institute-support-tracker-default-rtdb.firebaseio.com",
+  projectId: "institute-support-tracker",
+  storageBucket: "institute-support-tracker.firebasestorage.app",
+  messagingSenderId: "243121863324",
+  appId: "1:243121863324:web:f32d9cdea41be4f1204b59"
+};
+
+try {
+  const firebaseApp = initializeApp(firebaseConfig);
+  const realtimeDB = getDatabase(firebaseApp);
+  window.firebaseApp = firebaseApp;
+  window.firebaseDB = realtimeDB;
+  window.firebaseRef = ref;
+  window.firebaseOnValue = onValue;
+  window.firebaseSet = set;
+  window.firebaseGet = get;
+  window.firebaseChild = child;
+
+  const connectedRef = ref(realtimeDB, ".info/connected");
+  onValue(connectedRef, (snap) => {
+    const connected = snap.val() === true;
+    window.setFirebaseStatus(connected ? "connected" : "offline");
+  }, () => window.setFirebaseStatus("error"));
+
+  window.setFirebaseStatus("connected");
+} catch (err) {
+  console.error("Firebase initialization failed:", err);
+  window.setFirebaseStatus("error");
+}
+</script>
+
+<script>
+function setFirebaseStatus(state){
+  const dot=document.getElementById('firebaseDot');
+  const text=document.getElementById('firebaseText');
+  const box=document.getElementById('firebaseStatus');
+  if(!dot||!text)return;
+  if(state==='connected'){
+    dot.style.background='#35c759';
+    text.textContent='Firebase Connected';
+    box.title='Firebase Realtime Database connected';
+  }else if(state==='offline'){
+    dot.style.background='#f0ad4e';
+    text.textContent='Offline';
+    box.title='Firebase is currently offline. Local data remains available.';
+  }else{
+    dot.style.background='#dc3545';
+    text.textContent='Connection Error';
+    box.title='Firebase connection/initialization error';
+  }
+}
+window.setFirebaseStatus=setFirebaseStatus;
+</script>
+
+<script>
+const KEY='instituteSupportTrackerV2';
+let db={institutes:[],staff:[],tasks:[],updates:[]};
+let lastUploadSnapshot=null;
+let lastUploadInfo=null;
+const defaultStaff=['Staff 1','Staff 2','Staff 3','Staff 4','Staff 5'];
+
+function uid(p){return p+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)}
+function today(){return new Date().toISOString().slice(0,10)}
+function fmt(d){if(!d)return '-';let x=new Date(d+'T00:00:00');return x.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function save(){localStorage.setItem(KEY,JSON.stringify(db))}
+function load(){try{db=JSON.parse(localStorage.getItem(KEY))||db}catch(e){}if(!db.staff?.length)db.staff=defaultStaff.map((n,i)=>({id:'s'+(i+1),name:n}));save()}
+function toast(x){let t=document.getElementById('toast');t.textContent=x;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2300)}
+function page(id,el){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.side button').forEach(x=>x.classList.remove('active'));el.classList.add('active');renderAll()}
+function iName(id){return db.institutes.find(x=>x.id===id)?.name||id||'-'}
+function sName(id){return db.staff.find(x=>x.id===id)?.name||id||'-'}
+function status(s){let c=s==='Completed'?'complete':s==='Pending'?'pending':s==='Waiting for Institute'?'waiting':s==='In Progress'?'progress':s==='Escalated'?'esc':'hold';return `<span class="badge ${c}">${esc(s)}</span>`}
+function priority(s){let c=s==='High'?'pending':s==='Medium'?'waiting':'complete';return `<span class="badge ${c}">${esc(s)}</span>`}
+function active(){return db.tasks.filter(t=>t.status!=='Completed')}
+function lastUpdate(tid){return db.updates.filter(u=>u.taskId===tid).sort((a,b)=>b.date.localeCompare(a.date))[0]}
+function age(t){let d=t.createdDate||t.dueDate||today();return Math.max(0,Math.floor((new Date(today())-new Date(d+'T00:00:00'))/86400000))}
+function overdueDays(t){return t.dueDate&&t.dueDate<today()?Math.floor((new Date(today())-new Date(t.dueDate+'T00:00:00'))/86400000):0}
+function selectStaff(id,val){return `<select id="${id}">${db.staff.map(s=>`<option value="${s.id}" ${s.id===val?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`}
+function selectInst(id,val){return `<select id="${id}"><option value="">Select institute</option>${db.institutes.map(i=>`<option value="${i.id}" ${i.id===val?'selected':''}>${esc(i.name)}${i.code?' ('+esc(i.code)+')':''}</option>`).join('')}</select>`}
+function cats(){return [...new Set(db.tasks.map(t=>t.category).filter(Boolean))].sort()}
+function filters(){
+ const sets=[['istaff','All Staff'],['tstaff','All Staff'],['pstaff','All Staff'],['ustaff','All Staff']];
+ sets.forEach(([id,label])=>{let e=document.getElementById(id);if(!e)return;let old=e.value;e.innerHTML=`<option value="">${label}</option>`+db.staff.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');e.value=old});
+ ['tcat','pcat'].forEach(id=>{let e=document.getElementById(id);if(!e)return;let old=e.value;e.innerHTML='<option value="">All Categories</option>'+cats().map(c=>`<option>${esc(c)}</option>`).join('');e.value=old});
+}
+
+let globalFilter={search:'',task:'',category:'',event:'',staff:'',status:'',priority:'',due:'',next:''};
+
+function populateGlobalFilters(){
+ const vals={
+  gfTask:[...new Set(db.tasks.map(t=>t.task).filter(Boolean))].sort(),
+  gfCategory:[...new Set(db.tasks.map(t=>t.category).filter(Boolean))].sort(),
+  gfEvent:[...new Set(db.tasks.map(t=>t.event).filter(Boolean))].sort()
+ };
+ Object.entries(vals).forEach(([id,arr])=>{
+   const e=document.getElementById(id); if(!e)return;
+   const old=e.value;
+   const label=id==='gfTask'?'All Tasks':id==='gfCategory'?'All Categories':'All Month / Events';
+   e.innerHTML=`<option value="">${label}</option>`+arr.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
+   e.value=old;
+ });
+ const se=document.getElementById('gfStaff');
+ if(se){
+   const old=se.value;
+   se.innerHTML='<option value="">All Staff</option>'+db.staff.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
+   se.value=old;
+ }
+}
+
+function readGlobalFilter(){
+ globalFilter={
+  search:(document.getElementById('gfSearch')?.value||'').toLowerCase().trim(),
+  task:document.getElementById('gfTask')?.value||'',
+  category:document.getElementById('gfCategory')?.value||'',
+  event:document.getElementById('gfEvent')?.value||'',
+  staff:document.getElementById('gfStaff')?.value||'',
+  status:document.getElementById('gfStatus')?.value||'',
+  priority:document.getElementById('gfPriority')?.value||'',
+  due:document.getElementById('gfDue')?.value||'',
+  next:document.getElementById('gfNext')?.value||''
+ };
+}
+
+function globalTaskMatch(t){
+ if(globalFilter.task && t.task!==globalFilter.task)return false;
+ if(globalFilter.category && t.category!==globalFilter.category)return false;
+ if(globalFilter.event && t.event!==globalFilter.event)return false;
+ if(globalFilter.staff && t.staffId!==globalFilter.staff)return false;
+ if(globalFilter.status && t.status!==globalFilter.status)return false;
+ if(globalFilter.priority && t.priority!==globalFilter.priority)return false;
+ if(globalFilter.due && t.dueDate!==globalFilter.due)return false;
+ if(globalFilter.next && t.nextFollowup!==globalFilter.next)return false;
+ if(globalFilter.search){
+   const hay=(iName(t.instituteId)+' '+(t.instituteCode||'')+' '+t.task+' '+(t.category||'')+' '+(t.event||'')).toLowerCase();
+   if(!hay.includes(globalFilter.search))return false;
+ }
+ return true;
+}
+
+function applyGlobalFilter(){
+ readGlobalFilter();
+ renderAll();
+}
+
+function clearGlobalFilter(){
+ ['gfSearch','gfTask','gfCategory','gfEvent','gfStaff','gfStatus','gfPriority','gfDue','gfNext'].forEach(id=>{
+   const e=document.getElementById(id); if(e)e.value='';
+ });
+ readGlobalFilter();
+ renderAll();
+}
+
+function filteredTasks(){
+ return db.tasks.filter(globalTaskMatch);
+}
+
+function renderDashboard(){
+ let a=active().filter(globalTaskMatch), due=a.filter(t=>t.nextFollowup===today()), ov=a.filter(t=>t.nextFollowup&&t.nextFollowup<today());
+ document.getElementById('todayText').textContent=fmt(today());
+ const activeFilterLabels=[];
+ if(globalFilter.search)activeFilterLabels.push('Search: '+globalFilter.search);
+ if(globalFilter.task)activeFilterLabels.push('Task: '+globalFilter.task);
+ if(globalFilter.category)activeFilterLabels.push('Category: '+globalFilter.category);
+ if(globalFilter.event)activeFilterLabels.push('Month/Event: '+globalFilter.event);
+ if(globalFilter.staff)activeFilterLabels.push('Staff: '+sName(globalFilter.staff));
+ if(globalFilter.status)activeFilterLabels.push('Status: '+globalFilter.status);
+ if(globalFilter.priority)activeFilterLabels.push('Priority: '+globalFilter.priority);
+ if(globalFilter.due)activeFilterLabels.push('Due: '+fmt(globalFilter.due));
+ if(globalFilter.next)activeFilterLabels.push('Next Follow-up: '+fmt(globalFilter.next));
+ document.getElementById('dashboardFilterSummary').textContent=activeFilterLabels.length?'Active filters: '+activeFilterLabels.join(' | '):'Showing all institutes and tasks';
+ document.getElementById('mInst').textContent=db.institutes.length;document.getElementById('mActive').textContent=a.length;document.getElementById('mToday').textContent=due.length;document.getElementById('mOver').textContent=ov.length;
+ document.getElementById('mWait').textContent=a.filter(t=>t.status==='Waiting for Institute').length;document.getElementById('mProg').textContent=a.filter(t=>t.status==='In Progress').length;
+ document.getElementById('mDone').textContent=db.updates.filter(u=>u.date===today()&&u.status==='Completed').length;document.getElementById('mHigh').textContent=a.filter(t=>t.priority==='High').length;
+ document.getElementById('staffDash').innerHTML=`<table class="table"><tr><th>Staff</th><th>Institutes</th><th>Active</th><th>Today</th><th>Overdue</th></tr>${db.staff.map(s=>{let x=a.filter(t=>t.staffId===s.id);return `<tr><td>${esc(s.name)}</td><td>${db.institutes.filter(i=>i.staffId===s.id&&filteredTasks().some(t=>t.instituteId===i.id)).length}</td><td>${x.length}</td><td>${x.filter(t=>t.nextFollowup===today()).length}</td><td>${x.filter(t=>t.nextFollowup&&t.nextFollowup<today()).length}</td></tr>`}).join('')}</table>`;
+ document.getElementById('catDash').innerHTML=`<table class="table"><tr><th>Category</th><th>Active</th><th>Completed</th></tr>${cats().map(c=>`<tr><td>${esc(c)}</td><td>${a.filter(t=>t.category===c).length}</td><td>${filteredTasks().filter(t=>t.category===c&&t.status==='Completed').length}</td></tr>`).join('')}</table>`;
+}
+function renderInstitutes(){
+ let q=(document.getElementById('isearch').value||'').toLowerCase(),sf=document.getElementById('istaff').value;
+ let rows=db.institutes.filter(i=>filteredTasks().some(t=>t.instituteId===i.id)&&(!q||(i.name+' '+i.code).toLowerCase().includes(q))&&(!sf||i.staffId===sf)).map(i=>`<tr><td><b>${esc(i.name)}</b></td><td>${esc(i.code||'-')}</td><td>${esc(sName(i.staffId))}</td><td>${esc(i.location||'-')}</td><td>${esc(i.contact||'-')}<br>${esc(i.mobile||'')}</td><td>${active().filter(t=>t.instituteId===i.id).length}</td><td><button class="btn sm primary" onclick="openTask('', '${i.id}')">+ Task</button> <button class="btn sm" onclick="historyInstitute('${i.id}')">History</button> <button class="btn sm" onclick="editInstitute('${i.id}')">Edit</button></td></tr>`).join('');
+ document.getElementById('instBody').innerHTML=rows||'<tr><td colspan="7" class="empty">No institutes found.</td></tr>';
+}
+function renderTasks(){
+ let q=(document.getElementById('tsearch').value||'').toLowerCase(),sf=document.getElementById('tstaff').value,cat=document.getElementById('tcat').value,st=document.getElementById('tstatus').value;
+ let rows=filteredTasks().filter(t=>(!q||(iName(t.instituteId)+' '+t.task+' '+t.event).toLowerCase().includes(q))&&(!sf||t.staffId===sf)&&(!cat||t.category===cat)&&(!st||t.status===st)).sort((a,b)=>(a.nextFollowup||'9999').localeCompare(b.nextFollowup||'9999')).map(t=>`<tr><td><b>${esc(iName(t.instituteId))}</b><div class="muted">${esc(t.instituteCode||'')}</div></td><td>${esc(sName(t.staffId))}</td><td>${esc(t.task)}</td><td>${esc(t.category||'-')}</td><td>${esc(t.event||'-')}</td><td>${fmt(t.dueDate)}</td><td>${status(t.status)}</td><td>${fmt(t.nextFollowup)}</td><td><button class="btn sm info" onclick="openUpdate('${t.id}')">Update</button> <button class="btn sm" onclick="historyTask('${t.id}')">History</button> <button class="btn sm" onclick="editTask('${t.id}')">Edit</button></td></tr>`).join('');
+ document.getElementById('taskBody').innerHTML=rows||'<tr><td colspan="9" class="empty">No tasks found.</td></tr>';
+}
+function renderPending(){
+ let q=(document.getElementById('psearch').value||'').toLowerCase(),sf=document.getElementById('pstaff').value,cat=document.getElementById('pcat').value,pr=document.getElementById('ppriority').value;
+ let rows=active().filter(globalTaskMatch).filter(t=>(!q||(iName(t.instituteId)+' '+t.task+' '+t.event).toLowerCase().includes(q))&&(!sf||t.staffId===sf)&&(!cat||t.category===cat)&&(!pr||t.priority===pr)).map(t=>`<tr><td><b>${esc(iName(t.instituteId))}</b></td><td>${esc(t.task)}</td><td>${esc(t.category||'-')}</td><td>${esc(sName(t.staffId))}</td><td>${priority(t.priority)}</td><td class="${t.dueDate<today()?'danger':''}">${fmt(t.dueDate)}</td><td>${fmt(t.nextFollowup)}</td><td>${status(t.status)}</td><td>${age(t)}d</td><td><button class="btn sm info" onclick="openUpdate('${t.id}')">Update</button> <button class="btn sm success" onclick="complete('${t.id}')">Complete</button></td></tr>`).join('');
+ document.getElementById('pendingBody').innerHTML=rows||'<tr><td colspan="10" class="empty">No active pending tasks.</td></tr>';
+}
+function renderToday(){
+ let rows=active().filter(globalTaskMatch).filter(t=>t.nextFollowup===today()).map(t=>{let u=lastUpdate(t.id);return `<tr><td>${esc(iName(t.instituteId))}</td><td>${esc(t.task)}</td><td>${esc(sName(t.staffId))}</td><td>${priority(t.priority)}</td><td>${esc(u?.action||t.remarks||'-')}</td><td>${esc(u?.nextAction||t.nextAction||'-')}</td><td>${status(t.status)}</td><td><button class="btn sm info" onclick="openUpdate('${t.id}')">Update</button> <button class="btn sm success" onclick="complete('${t.id}')">Complete</button></td></tr>`}).join('');
+ document.getElementById('todayBody').innerHTML=rows||'<tr><td colspan="8" class="empty">No follow-ups due today.</td></tr>';
+}
+function renderOverdue(){
+ let rows=active().filter(globalTaskMatch).filter(t=>t.nextFollowup&&t.nextFollowup<today()).sort((a,b)=>a.nextFollowup.localeCompare(b.nextFollowup)).map(t=>`<tr><td>${esc(iName(t.instituteId))}</td><td>${esc(t.task)}</td><td>${esc(sName(t.staffId))}</td><td>${fmt(t.nextFollowup)}</td><td>${overdueDays(t)} days</td><td>${priority(t.priority)}</td><td>${status(t.status)}</td><td><button class="btn sm info" onclick="openUpdate('${t.id}')">Update</button></td></tr>`).join('');
+ document.getElementById('overBody').innerHTML=rows||'<tr><td colspan="8" class="empty">No overdue tasks.</td></tr>';
+}
+function renderUpdates(){
+ let q=(document.getElementById('usearch').value||'').toLowerCase(),sf=document.getElementById('ustaff').value;
+ let rows=[...db.updates].filter(u=>globalFilter.staff?u.staffId===globalFilter.staff:true).filter(u=>{let t=db.tasks.find(x=>x.id===u.taskId);return t?globalTaskMatch(t):true}).sort((a,b)=>b.date.localeCompare(a.date)).filter(u=>(!q||(iName(u.instituteId)+' '+(db.tasks.find(t=>t.id===u.taskId)?.task||'')+' '+u.action).toLowerCase().includes(q))&&(!sf||u.staffId===sf)).map(u=>`<tr><td>${fmt(u.date)}</td><td>${esc(iName(u.instituteId))}</td><td>${esc(db.tasks.find(t=>t.id===u.taskId)?.task||'-')}</td><td>${esc(sName(u.staffId))}</td><td>${esc(u.method)}</td><td>${esc(u.action)}</td><td>${esc(u.response||'-')}</td><td>${status(u.status)}</td><td>${fmt(u.nextFollowup)}</td></tr>`).join('');
+ document.getElementById('updateBody').innerHTML=rows||'<tr><td colspan="9" class="empty">No updates.</td></tr>';
+}
+function renderCompleted(){
+ let rows=filteredTasks().filter(t=>t.status==='Completed').sort((a,b)=>(b.completedDate||'').localeCompare(a.completedDate||'')).map(t=>`<tr><td>${esc(iName(t.instituteId))}</td><td>${esc(t.task)}</td><td>${esc(t.category||'-')}</td><td>${esc(sName(t.staffId))}</td><td>${fmt(t.completedDate)}</td><td>${esc(lastUpdate(t.id)?.action||'-')}</td><td><button class="btn sm" onclick="historyTask('${t.id}')">History</button> <button class="btn sm warning" onclick="reopen('${t.id}')">Reopen</button></td></tr>`).join('');
+ document.getElementById('doneBody').innerHTML=rows||'<tr><td colspan="7" class="empty">No completed tasks.</td></tr>';
+}
+function renderStaff(){
+ document.getElementById('staffBody').innerHTML=db.staff.map(s=>{let a=active().filter(globalTaskMatch).filter(t=>t.staffId===s.id);return `<tr><td><b>${esc(s.name)}</b></td><td>${db.institutes.filter(i=>i.staffId===s.id&&filteredTasks().some(t=>t.instituteId===i.id)).length}</td><td>${a.length}</td><td>${a.filter(t=>t.nextFollowup===today()).length}</td><td>${a.filter(t=>t.nextFollowup&&t.nextFollowup<today()).length}</td><td>${db.tasks.filter(t=>t.staffId===s.id&&t.status==='Completed').length}</td><td><button class="btn sm" onclick="renameStaff('${s.id}')">Rename</button> <button class="btn sm danger" onclick="deleteStaff('${s.id}')">Delete</button></td></tr>`}).join('');
+}
+function renderAll(){populateGlobalFilters();filters();readGlobalFilter();renderDashboard();renderInstitutes();renderTasks();renderPending();renderToday();renderOverdue();renderUpdates();renderCompleted();renderStaff()}
+function openModal(title,body,fn){document.getElementById('mtitle').textContent=title;document.getElementById('mbody').innerHTML=body;document.getElementById('msave').style.display='inline-block';document.getElementById('msave').onclick=fn;document.getElementById('modal').classList.add('show')}
+function closeModal(){document.getElementById('modal').classList.remove('show')}
+
+function openInstitute(id=''){let x=db.institutes.find(i=>i.id===id)||{};openModal(id?'Edit Institute':'Add Institute',`<div class="form">
+<div class="field"><label>Institute Name *</label><input id="in" value="${esc(x.name||'')}"></div><div class="field"><label>Institute Code *</label><input id="ic" value="${esc(x.code||'')}"></div>
+<div class="field"><label>Staff</label>${selectStaff('is',x.staffId||db.staff[0]?.id)}</div><div class="field"><label>Location / District</label><input id="il" value="${esc(x.location||'')}"></div>
+<div class="field"><label>Contact Person</label><input id="icont" value="${esc(x.contact||'')}"></div><div class="field"><label>Mobile</label><input id="imob" value="${esc(x.mobile||'')}"></div></div>`,()=>{let name=document.getElementById('in').value.trim(),code=document.getElementById('ic').value.trim();if(!name||!code)return alert('Institute Name and Code are required.');let o={id:x.id||uid('i'),name,code,staffId:document.getElementById('is').value,location:document.getElementById('il').value,contact:document.getElementById('icont').value,mobile:document.getElementById('imob').value};if(x.id)Object.assign(x,o);else db.institutes.push(o);save();closeModal();renderAll();toast('Institute saved.')})}
+function editInstitute(id){openInstitute(id)}
+
+function openTask(id='',inst=''){let x=db.tasks.find(t=>t.id===id)||{};let ins=inst||x.instituteId||'';openModal(id?'Edit Task':'Add Task',`<div class="form">
+<div class="field full"><label>Institute *</label>${selectInst('ti',ins)}</div>
+<div class="field"><label>Staff *</label>${selectStaff('ts',x.staffId||db.institutes.find(i=>i.id===ins)?.staffId||db.staff[0]?.id)}</div>
+<div class="field"><label>Task *</label><input id="tt" value="${esc(x.task||'')}" placeholder="CCTV Recording Upload"></div>
+<div class="field"><label>Task Category</label><input id="tc" value="${esc(x.category||'')}" placeholder="Exam / Accounts / Student"></div>
+<div class="field"><label>Month / Event</label><input id="te" value="${esc(x.event||'')}" placeholder="August 2026 Exam"></div>
+<div class="field"><label>Due Date</label><input type="date" id="td" value="${x.dueDate||''}"></div>
+<div class="field"><label>Priority</label><select id="tp"><option ${x.priority==='High'?'selected':''}>High</option><option ${x.priority==='Medium'||!x.priority?'selected':''}>Medium</option><option ${x.priority==='Low'?'selected':''}>Low</option></select></div>
+<div class="field"><label>Status</label><select id="tst"><option>Pending</option><option>In Progress</option><option>Waiting for Institute</option><option>Waiting for Internal Action</option><option>Escalated</option><option>On Hold</option><option>Completed</option></select></div>
+<div class="field"><label>Next Follow-up</label><input type="date" id="tn" value="${x.nextFollowup||today()}"></div>
+<div class="field"><label>Next Action</label><input id="ta" value="${esc(x.nextAction||'Follow up with institute')}"></div>
+<div class="field full"><label>Remarks</label><textarea id="tr">${esc(x.remarks||'')}</textarea></div></div>`,()=>{let instituteId=document.getElementById('ti').value,task=document.getElementById('tt').value.trim();if(!instituteId||!task)return alert('Institute and Task are required.');let o={id:x.id||uid('t'),instituteId,staffId:document.getElementById('ts').value,task,category:document.getElementById('tc').value.trim(),event:document.getElementById('te').value.trim(),dueDate:document.getElementById('td').value,priority:document.getElementById('tp').value,status:document.getElementById('tst').value,nextFollowup:document.getElementById('tn').value,nextAction:document.getElementById('ta').value,remarks:document.getElementById('tr').value,createdDate:x.createdDate||today()};if(o.status==='Completed')o.completedDate=x.completedDate||today();if(x.id)Object.assign(x,o);else db.tasks.push(o);let ii=db.institutes.find(i=>i.id===instituteId);if(ii)ii.staffId=o.staffId;save();closeModal();renderAll();toast('Task saved.')});if(x.id)setTimeout(()=>document.getElementById('tst').value=x.status,0)}
+function editTask(id){openTask(id)}
+
+function openUpdate(tid=''){let t=db.tasks.find(x=>x.id===tid)||active()[0];if(!t)return alert('No active task.');openModal('Daily Follow-up Update',`<div class="form">
+<div class="field"><label>Institute</label><input disabled value="${esc(iName(t.instituteId))}"></div><div class="field"><label>Task</label><input disabled value="${esc(t.task)}"></div>
+<div class="field"><label>Date</label><input type="date" id="ud" value="${today()}"></div><div class="field"><label>Follow-up Method</label><select id="um"><option>Phone Call</option><option>WhatsApp</option><option>Email</option><option>SMS</option><option>Meeting</option><option>Other</option></select></div>
+<div class="field full"><label>Action Taken *</label><textarea id="ua" placeholder="What did you do today?"></textarea></div>
+<div class="field full"><label>Institute Response</label><textarea id="ur"></textarea></div>
+<div class="field"><label>Current Status</label><select id="us"><option>Pending</option><option>In Progress</option><option>Waiting for Institute</option><option>Waiting for Internal Action</option><option>Escalated</option><option>Completed</option><option>On Hold</option></select></div>
+<div class="field"><label>Next Follow-up</label><input type="date" id="un" value="${t.nextFollowup||today()}"></div>
+<div class="field"><label>Next Action</label><input id="una" value="${esc(t.nextAction||'')}"></div><div class="field full"><label>Remarks</label><textarea id="urm"></textarea></div></div>`,()=>{let a=document.getElementById('ua').value.trim();if(!a)return alert('Enter Action Taken.');let d=document.getElementById('ud').value||today(),st=document.getElementById('us').value,n=document.getElementById('un').value;db.updates.push({id:uid('u'),taskId:t.id,instituteId:t.instituteId,staffId:t.staffId,date:d,method:document.getElementById('um').value,action:a,response:document.getElementById('ur').value,status:st,nextFollowup:n,nextAction:document.getElementById('una').value,remarks:document.getElementById('urm').value});t.status=st;t.nextFollowup=n;t.nextAction=document.getElementById('una').value;t.remarks=document.getElementById('urm').value;if(st==='Completed')t.completedDate=d;save();closeModal();renderAll();toast('Daily update saved.')});}
+function complete(id){let t=db.tasks.find(x=>x.id===id);if(t&&confirm('Mark this task completed?')){t.status='Completed';t.completedDate=today();t.nextFollowup='';db.updates.push({id:uid('u'),taskId:t.id,instituteId:t.instituteId,staffId:t.staffId,date:today(),method:'Other',action:'Task marked completed.',response:'',status:'Completed',nextFollowup:'',nextAction:'',remarks:''});save();renderAll();toast('Task completed.')}}
+function reopen(id){let t=db.tasks.find(x=>x.id===id);if(t){t.status='Pending';t.completedDate='';t.nextFollowup=today();save();renderAll();toast('Task reopened.')}}
+function historyTask(id){let t=db.tasks.find(x=>x.id===id),us=db.updates.filter(u=>u.taskId===id).sort((a,b)=>b.date.localeCompare(a.date));openModal('Task Follow-up History',`<div class="card"><b>${esc(iName(t.instituteId))}</b><h3>${esc(t.task)}</h3><div class="muted">${esc(t.category||'')} | ${esc(t.event||'')} | ${status(t.status)}</div></div><br><div class="timeline">${us.map(u=>`<div class="event"><b>${fmt(u.date)} — ${esc(u.method)}</b> ${status(u.status)}<div class="muted">${esc(sName(u.staffId))}</div><p><b>Action:</b> ${esc(u.action)}</p><p><b>Institute Response:</b> ${esc(u.response||'-')}</p><p><b>Next:</b> ${fmt(u.nextFollowup)} — ${esc(u.nextAction||'-')}</p></div>`).join('')||'<div class="empty">No updates yet.</div>'}</div>`,closeModal);document.getElementById('msave').style.display='none'}
+function historyInstitute(id){let ts=db.tasks.filter(t=>t.instituteId===id);openModal('Institute Task History - '+iName(id),`<table class="table"><tr><th>Task</th><th>Event</th><th>Status</th><th>Staff</th><th>Next Follow-up</th></tr>${ts.map(t=>`<tr><td>${esc(t.task)}</td><td>${esc(t.event||'-')}</td><td>${status(t.status)}</td><td>${esc(sName(t.staffId))}</td><td>${fmt(t.nextFollowup)}</td></tr>`).join('')}</table>`,closeModal);document.getElementById('msave').style.display='none'}
+function addStaff(){openModal('Add Staff',`<div class="field"><label>Staff Name</label><input id="sn"></div>`,()=>{let n=document.getElementById('sn').value.trim();if(n){db.staff.push({id:uid('s'),name:n});save();closeModal();renderAll()}})}
+function renameStaff(id){let s=db.staff.find(x=>x.id===id),n=prompt('New staff name:',s.name);if(n?.trim()){s.name=n.trim();save();renderAll()}}
+function deleteStaff(id){
+ let s=db.staff.find(x=>x.id===id);
+ if(!s)return;
+ if(db.staff.length<=1){alert('At least one staff member must remain.');return;}
+ const assignedInstitutes=db.institutes.filter(i=>i.staffId===id).length;
+ const assignedTasks=db.tasks.filter(t=>t.staffId===id).length;
+ const msg=`Delete "${s.name}"?\n\nAssigned institutes: ${assignedInstitutes}\nAssigned tasks: ${assignedTasks}\n\nDeleting a staff member does not delete institutes or tasks. You should reassign them first.`;
+ if(assignedInstitutes||assignedTasks){
+   if(!confirm(msg+'\n\nDo you still want to delete this staff member?'))return;
+   const replacement=db.staff.find(x=>x.id!==id);
+   db.institutes.forEach(i=>{if(i.staffId===id)i.staffId=replacement.id});
+   db.tasks.forEach(t=>{if(t.staffId===id)t.staffId=replacement.id});
+   db.updates.forEach(u=>{if(u.staffId===id)u.staffId=replacement.id});
+ }else{
+   if(!confirm(msg))return;
+ }
+ db.staff=db.staff.filter(x=>x.id!==id);
+ save();renderAll();toast('Staff member deleted.');
+}
+
+
+function makeTaskKey(task, event){
+ return `${String(task||'').trim().toLowerCase()}||${String(event||'').trim().toLowerCase()}`;
+}
+function makeTaskInstituteKey(taskKey, instituteId){
+ return `${taskKey}||${instituteId}`;
+}
+function showUndoButton(info){
+ const b=document.getElementById('undoUploadBtn'), s=document.getElementById('uploadSummary');
+ if(b)b.style.display=info?'inline-block':'none';
+ if(s)s.textContent=info?`Last upload: ${info.taskLabel} — ${info.count} institutes (${info.date})`:'';
+}
+function undoLastUpload(){
+ if(!lastUploadSnapshot)return alert('There is no upload available to undo.');
+ if(!confirm(`Undo the last Excel upload?\n\n${lastUploadInfo?.taskLabel||'Last upload'}\n${lastUploadInfo?.count||0} institutes\n\nThis will restore the task records exactly as they were before the upload.`))return;
+ db=JSON.parse(JSON.stringify(lastUploadSnapshot.db));
+ save();
+ lastUploadSnapshot=null;
+ lastUploadInfo=null;
+ showUndoButton(null);
+ renderAll();
+ toast('Last Excel upload has been undone.');
+}
+
+
+const EXCEL_IMPORT_PASSWORD = 'Niraj@123';
+let pendingExcelInputId = null;
+
+function requestExcelImport(){
+  pendingExcelInputId = 'excel';
+  // If the user is on the Excel Import tab, prefer its dedicated input.
+  if(document.getElementById('excel2')) pendingExcelInputId = 'excel2';
+  document.getElementById('excelImportPassword').value='';
+  document.getElementById('importPasswordError').style.display='none';
+  document.getElementById('importPasswordModal').classList.add('show');
+  setTimeout(()=>document.getElementById('excelImportPassword').focus(),80);
+}
+
+function closeImportPassword(){
+  document.getElementById('importPasswordModal').classList.remove('show');
+  pendingExcelInputId=null;
+}
+
+function verifyImportPassword(){
+  const input=document.getElementById('excelImportPassword');
+  const error=document.getElementById('importPasswordError');
+  if(input.value===EXCEL_IMPORT_PASSWORD){
+    const target=document.getElementById(pendingExcelInputId||'excel');
+    closeImportPassword();
+    if(target) target.click();
+  }else{
+    error.style.display='block';
+    input.select();
+  }
+}
+
+function importExcel(e){
+ let f=e.target.files[0];if(!f)return;
+ let r=new FileReader();
+ r.onload=x=>{
+  try{
+   let wb=XLSX.read(x.target.result,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+   if(!rows.length)return alert('Excel has no rows.');
+
+   let keys=Object.keys(rows[0]);
+   let key=(arr)=>keys.find(k=>arr.some(a=>k.toLowerCase().replace(/[^a-z]/g,'').includes(a)));
+
+   let ik=key(['institutecode','centercode','alccode','code']);
+   let nk=key(['institutename','centername','clientname','institute','center']);
+   let sk=key(['staffname','staff','employee']);
+   let tk=key(['task','pendingwork','activity','work']);
+   let ck=key(['taskcategory','category']);
+   let ek=key(['monthevent','event','month']);
+   let dk=key(['duedate','deadline','due']);
+   let pk=key(['priority']);
+   let st=key(['status']);
+   let fn=key(['nextfollowup','followupdate','nextfollow']);
+   let rm=key(['remarks','remark']);
+
+   if(!nk||!tk)return alert('Excel must contain Institute Name and Task columns.');
+
+   /* ---------------------------------------------------------
+      IMPORTANT:
+      The upload replaces ONLY the matching Task + Month/Event
+      active institute list. Other tasks remain untouched.
+      Example:
+      CCTV + August Exam: 48 -> new file has 40 -> active = 40.
+      Bank Details + August: unaffected.
+      --------------------------------------------------------- */
+
+   const groups={};
+   rows.forEach(r=>{
+     const task=String(r[tk]||'').trim();
+     const event=ek?String(r[ek]||'').trim():'';
+     if(!task)return;
+     const taskKey=makeTaskKey(task,event);
+     if(!groups[taskKey])groups[taskKey]={task,event,rows:[]};
+     groups[taskKey].rows.push(r);
+   });
+
+   // Take a full snapshot so the entire last upload can be undone.
+   lastUploadSnapshot={db:JSON.parse(JSON.stringify(db))};
+
+   let totalAdded=0,totalUpdated=0,totalRemoved=0,totalNewInstitutes=0;
+   const uploadDate=today();
+
+   for(const [taskKey,group] of Object.entries(groups)){
+     const currentKeys=new Set();
+
+     for(let idx=0;idx<group.rows.length;idx++){
+       const r=group.rows[idx];
+       const name=String(r[nk]||'').trim();
+       const task=String(r[tk]||'').trim();
+       if(!name||!task)continue;
+
+       let code=ik?String(r[ik]||'').trim():'';
+       let ins=db.institutes.find(i=>(code&&i.code===code)||i.name.toLowerCase()===name.toLowerCase());
+
+       let staffId='';
+       if(sk&&r[sk]){
+         const sn=String(r[sk]).trim();
+         let staff=db.staff.find(z=>z.name.toLowerCase()===sn.toLowerCase());
+         if(!staff){
+           staff={id:uid('s'),name:sn};
+           db.staff.push(staff);
+         }
+         staffId=staff.id;
+       }
+
+       if(!ins){
+         ins={
+           id:uid('i'),
+           name,
+           code,
+           staffId:staffId||db.staff[idx%Math.max(1,db.staff.length)]?.id||'',
+           location:'',
+           contact:'',
+           mobile:''
+         };
+         db.institutes.push(ins);
+         totalNewInstitutes++;
+       }else if(staffId){
+         ins.staffId=staffId;
+       }
+
+       currentKeys.add(makeTaskInstituteKey(taskKey,ins.id));
+
+       let due=parseDate(r[dk]);
+       let next=parseDate(r[fn]);
+       let category=ck?String(r[ck]||'').trim():'General';
+       let prio=pk?String(r[pk]||'').trim():'Medium';
+       let statusVal=st?String(r[st]||'').trim():'Pending';
+
+       if(!['High','Medium','Low'].includes(prio))prio='Medium';
+       if(!['Pending','In Progress','Waiting for Institute','Waiting for Internal Action','Escalated','On Hold','Completed'].includes(statusVal))statusVal='Pending';
+
+       let existing=db.tasks.find(t=>{
+         const existingKey=t.taskKey||makeTaskKey(t.task,t.event);
+         return existingKey===taskKey && t.instituteId===ins.id;
+       });
+
+       const obj={
+         instituteId:ins.id,
+         instituteCode:ins.code,
+         staffId:staffId||ins.staffId,
+         task,
+         taskKey,
+         category,
+         event:group.event,
+         dueDate:due,
+         priority:prio,
+         status:statusVal,
+         nextFollowup:next||due||today(),
+         nextAction:'Follow up with institute',
+         remarks:rm?String(r[rm]||''):'',
+         uploadBatchDate:uploadDate,
+         createdDate:existing?.createdDate||today()
+       };
+
+       if(existing){
+         // Preserve history-related fields and existing task ID.
+         Object.assign(existing,obj);
+         totalUpdated++;
+       }else{
+         db.tasks.push({id:uid('t'),...obj});
+         totalAdded++;
+       }
+     }
+
+     // Remove active task records for this SAME task/event when the
+     // institute is no longer present in the newly uploaded file.
+     const before=db.tasks.length;
+     db.tasks=db.tasks.filter(t=>{
+       const existingKey=t.taskKey||makeTaskKey(t.task,t.event);
+       if(existingKey!==taskKey)return true;
+       if(t.status==='Completed')return true; // preserve completed history
+       return currentKeys.has(makeTaskInstituteKey(taskKey,t.instituteId));
+     });
+     totalRemoved += before-db.tasks.length;
+   }
+
+   save();
+   lastUploadInfo={
+     taskLabel:Object.values(groups).map(g=>g.event?`${g.task} — ${g.event}`:g.task).join(', '),
+     count:rows.filter(r=>String(r[nk]||'').trim()&&String(r[tk]||'').trim()).length,
+     date:uploadDate
+   };
+   showUndoButton(lastUploadInfo);
+   renderAll();
+   toast(`Excel imported. Added: ${totalAdded}, Updated: ${totalUpdated}, Removed from active list: ${totalRemoved}.`);
+   e.target.value='';
+  }catch(err){
+   console.error(err);
+   lastUploadSnapshot=null;
+   lastUploadInfo=null;
+   showUndoButton(null);
+   alert('Import failed. Please check the Excel format.');
+  }
+ };
+ r.readAsArrayBuffer(f);
+}
+function parseDate(v){if(!v)return'';if(typeof v==='number'){let d=XLSX.SSF.parse_date_code(v);return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`}let s=String(v).trim();let m=s.match(/^(\\d{1,2})[-\\/](\\d{1,2})[-\\/](\\d{4})$/);if(m)return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;let d=new Date(s);return isNaN(d)?'':d.toISOString().slice(0,10)}
+function downloadTemplate(){let rows=[{'Institute Code':'ALC001','Institute Name':'ABC Computer Institute','Staff Name':'Staff 1','Task':'CCTV Recording Upload','Task Category':'Exam','Month/Event':'August 2026 Exam','Due Date':'20-08-2026','Priority':'High','Status':'Pending','Next Follow-up':'20-08-2026','Remarks':''},{'Institute Code':'ALC001','Institute Name':'ABC Computer Institute','Staff Name':'Staff 1','Task':'Bank Details Upload','Task Category':'Accounts','Month/Event':'August 2026','Due Date':'25-08-2026','Priority':'Medium','Status':'Pending','Next Follow-up':'25-08-2026','Remarks':''},{'Institute Code':'ALC002','Institute Name':'XYZ Computer Institute','Staff Name':'Staff 2','Task':'CCTV Recording Upload','Task Category':'Exam','Month/Event':'August 2026 Exam','Due Date':'20-08-2026','Priority':'High','Status':'Pending','Next Follow-up':'20-08-2026','Remarks':''}];let ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Task Upload Template');XLSX.writeFile(wb,'Institute_Task_Upload_Template.xlsx')}
+function exportX(rows,name){let ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Report');XLSX.writeFile(wb,name)}
+function exportPending(){exportX(active().map(t=>({Institute:iName(t.instituteId),Code:t.instituteCode,Staff:sName(t.staffId),Task:t.task,Category:t.category,'Month/Event':t.event,'Due Date':t.dueDate,Priority:t.priority,Status:t.status,'Next Follow-up':t.nextFollowup,'Pending Age':age(t),Remarks:t.remarks})),'Pending_Tasks.xlsx')}
+function exportUpdates(){exportX(db.updates.map(u=>({Date:u.date,Institute:iName(u.instituteId),Task:db.tasks.find(t=>t.id===u.taskId)?.task,Staff:sName(u.staffId),Method:u.method,'Action Taken':u.action,'Institute Response':u.response,Status:u.status,'Next Follow-up':u.nextFollowup,'Next Action':u.nextAction,Remarks:u.remarks})),'Daily_Followup_Updates.xlsx')}
+function exportInstitutes(){exportX(db.institutes.map(i=>({Code:i.code,Institute:i.name,Staff:sName(i.staffId),Location:i.location,Contact:i.contact,Mobile:i.mobile,'Active Tasks':active().filter(t=>t.instituteId===i.id).length})),'Institute_Master.xlsx')}
+function exportAll(){let rows=[];active().forEach(t=>rows.push({Type:'Task',Institute:iName(t.instituteId),Code:t.instituteCode,Staff:sName(t.staffId),Task:t.task,Category:t.category,Event:t.event,Due:t.dueDate,Priority:t.priority,Status:t.status,'Next Follow-up':t.nextFollowup}));db.updates.forEach(u=>rows.push({Type:'Update',Date:u.date,Institute:iName(u.instituteId),Task:db.tasks.find(t=>t.id===u.taskId)?.task,Staff:sName(u.staffId),Method:u.method,Action:u.action,Response:u.response,Status:u.status,'Next Follow-up':u.nextFollowup}));exportX(rows,'Complete_Institute_Task_Report.xlsx')}
+load();renderAll();
+</script>
+</body>
+</html>
